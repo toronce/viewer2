@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>파파고 연동 데이터 뷰어</title>
+  <style>
+    body {
+      font-family: 'Malgun Gothic', sans-serif;
+      background: #f7f9fc;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #1ec800, #0fb300);
+      color: white;
+      padding: 30px;
+      text-align: center;
+      border-radius: 12px 12px 0 0;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+    }
+    
+    .content {
+      padding: 30px;
+    }
+    
+    .workflow {
+      background: #e3f2fd;
+      border-radius: 12px;
+      padding: 25px;
+      margin-bottom: 30px;
+      border-left: 5px solid #2196f3;
+    }
+    
+    .workflow h3 {
+      margin: 0 0 15px 0;
+      color: #1976d2;
+      font-size: 18px;
+    }
+    
+    .step {
+      display: flex;
+      align-items: center;
+      margin: 15px 0;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .step-number {
+      background: #1ec800;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+    
+    .step-content {
+      flex: 1;
+    }
+    
+    .step-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    
+    .step-desc {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .papago-link {
+      display: inline-block;
+      background: #1ec800;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      margin: 10px 10px 10px 0;
+      transition: all 0.3s;
+    }
+    
+    .papago-link:hover {
+      background: #16a085;
+      transform: translateY(-2px);
+    }
+    
+    .input-section {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    
+    .input-area {
+      width: 100%;
+      min-height: 200px;
+      max-height: 400px;
+      padding: 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 16px;
+      font-family: 'Courier New', monospace;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      background: white;
+      transition: border-color 0.3s;
+    }
+    
+    .input-area:focus {
+      border-color: #1ec800;
+      box-shadow: 0 0 0 4px rgba(30, 200, 0, 0.1);
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: white;
+      color: #333;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn:hover {
+      border-color: #1ec800;
+      background: #f0fff4;
+    }
+    
+    .btn-primary {
+      background: #1ec800;
+      color: white;
+      border-color: #1ec800;
+    }
+    
+    .btn-primary:hover {
+      background: #16a085;
+    }
+    
+    .result-area {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 200px;
+      max-height: 500px;
+      overflow: auto;
+    }
+    
+    .empty-state {
+      text-align: center;
+      color: #9ca3af;
+      font-style: italic;
+      padding: 60px 20px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    
+    table th, table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    table th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #374151;
+    }
+    
+    table tr:hover {
+      background: #f9fafb;
+    }
+    
+    .alert {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .alert.success {
+      background: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+    }
+    
+    .tip {
+      background: #e8f5e8;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      border-left: 4px solid #1ec800;
+    }
+    
+    .tip strong {
+      color: #1ec800;
+    }
+    
+    .capture-highlight {
+      border: 3px dashed #1ec800 !important;
+      background: #f0fff4 !important;
+    }
+    
+    .capture-hint {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      text-align: center;
+      border: 2px solid #2196f3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔗 파파고 연동 + 화면 캡처 뷰어</h1>
+      <p>보안 PC에서 파파고를 중계점으로 활용하고 화면 캡처로 이미지 우회</p>
+    </div>
+    
+    <div class="content">
+      <div class="alert">
+        <strong>🔍 분석 결과:</strong> 파파고(naver.com)에서는 붙여넣기가 되지만 구글번역기에서는 안 되는 이유는 <strong>도메인 기반 보안 정책</strong> 때문입니다. 네이버 도메인만 화이트리스트에 등록되어 있을 가능성이 높습니다.
+      </div>
+
+      <div class="workflow">
+        <h3>🛣️ 파파고 중계 워크플로우</h3>
+        
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">엑셀 데이터 복사</div>
+            <div class="step-desc">엑셀에서 원하는 표 범위를 선택하고 Ctrl+C로 복사</div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">파파고에서 붙여넣기</div>
+            <div class="step-desc">파파고 번역창에 Ctrl+V로 붙여넣기 (번역은 하지 않아도 됨)</div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">파파고에서 다시 복사</div>
+            <div class="step-desc">파파고 입력창의 내용을 전체 선택해서 Ctrl+C로 복사</div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <div class="step-title">여기에 붙여넣기</div>
+            <div class="step-desc">아래 입력창에 Ctrl+V로 붙여넣고 표로 변환</div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+          <a href="https://papago.naver.com" target="_blank" class="papago-link">
+            🚀 파파고 열기 (새 창)
+          </a>
+          <a href="https://papago.naver.com" target="_blank" class="papago-link">
+            📱 파파고 앱 사용
+          </a>
+        </div>
+      </div>
+
+      <div class="input-section">
+        <h3>📝 데이터 입력 (파파고에서 복사한 내용)</h3>
+        <textarea 
+          class="input-area" 
+          id="dataInput"
+          placeholder="파파고에서 복사한 데이터를 여기에 붙여넣으세요...
+
+예상 형태:
+이름	나이	부서
+홍길동	30	개발팀
+김영희	25	디자인팀
+
+또는:
+이름, 나이, 부서
+홍길동, 30, 개발팀
+김영희, 25, 디자인팀"
+        ></textarea>
+        
+        <div class="controls">
+          <button class="btn btn-primary" onclick="processData()">📊 표로 변환</button>
+          <button class="btn" onclick="clearData()">🗑️ 지우기</button>
+          <button class="btn" onclick="copyResult()">📋 결과 복사</button>
+          <button class="btn" onclick="downloadCSV()">💾 CSV 다운로드</button>
+          <button class="btn" onclick="startScreenCapture()">📸 화면 캡처</button>
+        </div>
+        
+        <div class="tip">
+          <strong>💡 핵심 팁:</strong> 파파고는 보안 PC에서도 클립보드가 허용되므로, 파파고를 "중계점"으로 활용하면 데이터를 안전하게 전달할 수 있습니다!
+        </div>
+      </div>
+      
+      <div class="input-section">
+        <h3>📊 변환 결과</h3>
+        <div class="result-area" id="resultArea">
+          <div class="empty-state">
+            위에 데이터를 입력하고 "표로 변환" 버튼을 눌러주세요
+          </div>
+        </div>
+      </div>
+
+      <!-- 캡처된 이미지 표시 영역 -->
+      <div class="input-section" id="captureSection" style="display: none;">
+        <h3>📸 캡처된 이미지</h3>
+        <div class="tip">
+          <strong>💡 사용법:</strong> 아래 이미지에서 <strong>우클릭 → "이미지 복사"</strong> 후 다른 앱에서 Ctrl+V로 붙여넣으세요!
+        </div>
+        <div class="capture-hint">
+          <strong>🎯 이것이 핵심입니다!</strong><br>
+          웹 이미지는 우클릭으로 복사 가능 → 회사 이메일, PPT, 워드에 붙여넣기 가능!
+        </div>
+        <div style="text-align: center; background: white; padding: 20px; border-radius: 8px;" class="capture-highlight">
+          <img id="capturedImage" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+          <div style="margin-top: 15px; color: #666; font-size: 14px;">
+            ☝️ 이 이미지를 우클릭하여 "이미지 복사"를 선택하세요
+          </div>
+        </div>
+        <div style="text-align: center; margin-top: 15px;">
+          <button class="btn" onclick="clearCapture()">🗑️ 캡처 삭제</button>
+          <button class="btn" onclick="startScreenCapture()">📸 다시 캡처</button>
+        </div>
+      </div>
+
+      <!-- 추가 팁 섹션 -->
+      <div class="workflow">
+        <h3>🎯 화면 캡처 활용법</h3>
+        
+        <div class="step">
+          <div class="step-number">📸</div>
+          <div class="step-content">
+            <div class="step-title">아무거나 캡처 가능</div>
+            <div class="step-desc">PDF, PPT, 이미지, 웹페이지 등 화면에 보이는 모든 것을 캡처</div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">🖼️</div>
+          <div class="step-content">
+            <div class="step-title">웹 이미지로 변환</div>
+            <div class="step-desc">캡처한 내용이 이 웹페이지에 이미지로 표시됨</div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">👆</div>
+          <div class="step-content">
+            <div class="step-title">우클릭으로 복사</div>
+            <div class="step-desc">웹 이미지를 우클릭 → "이미지 복사" → 다른 앱에 붙여넣기</div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">📧</div>
+          <div class="step-content">
+            <div class="step-title">어디든 붙여넣기</div>
+            <div class="step-desc">회사 이메일, PPT, 워드, 메모장 등에 Ctrl+V로 붙여넣기</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dataInput = document.getElementById('dataInput');
+    const resultArea = document.getElementById('resultArea');
+
+    // 입력 감지
+    dataInput.addEventListener('paste', function() {
+      setTimeout(() => {
+        if (dataInput.value.trim()) {
+          showAlert('파파고에서 데이터가 전달되었습니다!', 'success');
+        }
+      }, 100);
+    });
+
+    // 알림 표시
+    function showAlert(message, type = 'info') {
+      const existingAlert = document.querySelector('.alert.dynamic');
+      if (existingAlert) {
+        existingAlert.remove();
+      }
+      
+      const alert = document.createElement('div');
+      alert.className = `alert dynamic ${type}`;
+      alert.innerHTML = `<strong>📢</strong> ${message}`;
+      
+      const content = document.querySelector('.content');
+      content.insertBefore(alert, content.firstChild);
+      
+      setTimeout(() => {
+        alert.remove();
+      }, 3000);
+    }
+
+    // 데이터 처리
+    function processData() {
+      const inputText = dataInput.value.trim();
+      
+      if (!inputText) {
+        showAlert('파파고에서 복사한 데이터를 먼저 붙여넣어 주세요!', 'error');
+        return;
+      }
+
+      try {
+        const result = parseTextToTable(inputText);
+        resultArea.innerHTML = result;
+        showAlert('표 변환이 완료되었습니다!', 'success');
+      } catch (error) {
+        showAlert('데이터 처리 중 오류가 발생했습니다!', 'error');
+      }
+    }
+
+    // 텍스트를 표로 변환
+    function parseTextToTable(text) {
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length === 0) {
+        return '<div class="empty-state">변환할 데이터가 없습니다</div>';
+      }
+
+      // 구분자 자동 감지
+      let delimiter = detectDelimiter(lines[0]);
+      
+      let html = '<table>';
+      
+      lines.forEach((line, index) => {
+        html += '<tr>';
+        
+        const cells = line.split(delimiter);
+        cells.forEach(cellText => {
+          const tag = index === 0 ? 'th' : 'td';
+          const cleanText = cellText.trim() || '&nbsp;';
+          html += `<${tag}>${cleanText}</${tag}>`;
+        });
+        
+        html += '</tr>';
+      });
+      
+      html += '</table>';
+      
+      const delimiterName = delimiter === '\t' ? '탭' : 
+                           delimiter === ',' ? '콤마' : 
+                           delimiter === '|' ? '파이프' : '공백';
+      
+      html += `<div style="text-align: center; color: #666; margin-top: 15px; font-size: 14px;">
+        📊 ${lines.length}행 × ${lines[0].split(delimiter).length}열 
+        (구분자: ${delimiterName}) | 파파고 경유 전송 완료 ✅
+      </div>`;
+      
+      return html;
+    }
+
+    // 구분자 감지
+    function detectDelimiter(line) {
+      if (line.includes('\t')) return '\t';
+      if (line.includes(',')) return ',';
+      if (line.includes('|')) return '|';
+      return /\s+/;
+    }
+
+    // 데이터 지우기
+    function clearData() {
+      if (confirm('입력된 데이터를 모두 지우시겠습니까?')) {
+        dataInput.value = '';
+        resultArea.innerHTML = '<div class="empty-state">위에 데이터를 입력하고 "표로 변환" 버튼을 눌러주세요</div>';
+        showAlert('데이터가 삭제되었습니다', 'success');
+      }
+    }
+
+    // 결과 복사
+    function copyResult() {
+      try {
+        const tables = resultArea.querySelectorAll('table');
+        if (tables.length === 0) {
+          showAlert('복사할 표가 없습니다!', 'error');
+          return;
+        }
+
+        let textContent = '';
+        tables[0].querySelectorAll('tr').forEach(row => {
+          const cells = Array.from(row.querySelectorAll('th, td'));
+          const rowText = cells.map(cell => cell.textContent.trim()).join('\t');
+          textContent += rowText + '\n';
+        });
+
+        const tempTextarea = document.createElement('textarea');
+        tempTextarea.value = textContent;
+        document.body.appendChild(tempTextarea);
+        tempTextarea.select();
+        
+        if (document.execCommand('copy')) {
+          showAlert('표가 클립보드에 복사되었습니다!', 'success');
+        } else {
+          throw new Error('복사 실패');
+        }
+        
+        document.body.removeChild(tempTextarea);
+      } catch (error) {
+        showAlert('복사 기능이 제한되어 있습니다', 'error');
+      }
+    }
+
+    // CSV 다운로드
+    function downloadCSV() {
+      const tables = resultArea.querySelectorAll('table');
+      if (tables.length === 0) {
+        showAlert('다운로드할 표가 없습니다!', 'error');
+        return;
+      }
+
+      let csvContent = '';
+      tables[0].querySelectorAll('tr').forEach(row => {
+        const cells = Array.from(row.querySelectorAll('th, td'));
+        const rowText = cells.map(cell => `"${cell.textContent.trim()}"`).join(',');
+        csvContent += rowText + '\n';
+      });
+
+      try {
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv; charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `papago_data_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showAlert('CSV 파일이 다운로드되었습니다!', 'success');
+      } catch (error) {
+        showAlert('다운로드 기능이 제한되어 있습니다', 'error');
+      }
+    }
+
+    // 화면 캡처 시작
+    async function startScreenCapture() {
+      try {
+        showAlert('화면 캡처를 시작합니다. 캡처할 영역을 선택하세요!', 'info');
+        
+        // Screen Capture API 사용
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            mediaSource: 'screen',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        });
+        
+        // 비디오 요소 생성
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        video.play();
+        
+        // 비디오가 로드되면 캔버스로 변환
+        video.addEventListener('loadedmetadata', () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // 캔버스 크기 설정
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          
+          // 첫 프레임 캡처
+          ctx.drawImage(video, 0, 0);
+          
+          // 스트림 정지
+          stream.getTracks().forEach(track => track.stop());
+          
+          // 캡처된 이미지를 Data URL로 변환
+          const imageDataUrl = canvas.toDataURL('image/png', 1.0);
+          
+          // 웹페이지에 이미지 표시
+          displayCapturedImage(imageDataUrl);
+          
+          showAlert('🎉 캡처 완료! 아래 이미지를 우클릭하여 복사하세요!', 'success');
+          
+        });
+        
+      } catch (error) {
+        console.error('화면 캡처 실패:', error);
+        
+        if (error.name === 'NotAllowedError') {
+          showAlert('❌ 화면 캡처 권한이 거부되었습니다. 브라우저 설정을 확인해주세요.', 'error');
+        } else if (error.name === 'NotSupportedError') {
+          showAlert('❌ 이 브라우저는 화면 캡처를 지원하지 않습니다. Chrome이나 Edge를 사용해주세요.', 'error');
+        } else {
+          showAlert('❌ 화면 캡처 중 오류가 발생했습니다.', 'error');
+        }
+      }
+    }
+    
+    // 캡처된 이미지를 웹페이지에 표시
+    function displayCapturedImage(imageDataUrl) {
+      const captureSection = document.getElementById('captureSection');
+      const capturedImage = document.getElementById('capturedImage');
+      
+      // 이미지 설정
+      capturedImage.src = imageDataUrl;
+      capturedImage.alt = '캡처된 이미지';
+      
+      // 우클릭 방지 해제 (복사를 위해)
+      capturedImage.oncontextmenu = function() {
+        return true; // 우클릭 허용
+      };
+      
+      // 캡처 섹션 표시
+      captureSection.style.display = 'block';
+      
+      // 캡처 섹션으로 스크롤
+      captureSection.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // 캡처 삭제
+    function clearCapture() {
+      const captureSection = document.getElementById('captureSection');
+      const capturedImage = document.getElementById('capturedImage');
+      
+      capturedImage.src = '';
+      captureSection.style.display = 'none';
+      
+      showAlert('캡처된 이미지가 삭제되었습니다.', 'success');
+    }
+
+    // 초기화
+    dataInput.focus();
+  </script>
+</body>
+</html>
