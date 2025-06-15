@@ -254,6 +254,57 @@
       text-align: center;
       border: 2px solid #2196f3;
     }
+
+    /* 이미지 자르기 관련 스타일 */
+    .crop-container {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+    }
+    
+    .crop-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      z-index: 10;
+    }
+    
+    .crop-selection {
+      position: absolute;
+      border: 2px dashed #1ec800;
+      background: rgba(30, 200, 0, 0.1);
+      pointer-events: none;
+      z-index: 11;
+    }
+    
+    .crop-controls {
+      margin: 15px 0;
+      text-align: center;
+      display: none;
+    }
+    
+    .crop-controls.active {
+      display: block;
+    }
+    
+    .crop-hint {
+      background: #fff3cd;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+      font-size: 14px;
+      color: #856404;
+      text-align: center;
+    }
+    
+    .crop-status {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
   </style>
 </head>
 <body>
@@ -363,8 +414,25 @@
           <strong>🎯 이것이 핵심입니다!</strong><br>
           웹 이미지는 우클릭으로 복사 가능 → 회사 이메일, PPT, 워드에 붙여넣기 가능!
         </div>
+        
+        <div class="crop-hint" id="cropHint">
+          <strong>✂️ 이미지 자르기:</strong> 마우스로 드래그하여 원하는 영역을 선택하고 "자르기" 버튼을 누르세요
+        </div>
+        
         <div style="text-align: center; background: white; padding: 20px; border-radius: 8px;" class="capture-highlight">
-          <img id="capturedImage" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+          <div class="crop-container" id="cropContainer">
+            <img id="capturedImage" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+            <div class="crop-overlay" id="cropOverlay"></div>
+            <div class="crop-selection" id="cropSelection"></div>
+          </div>
+          
+          <div class="crop-controls" id="cropControls">
+            <button class="btn" onclick="cropImage()">✂️ 자르기</button>
+            <button class="btn" onclick="resetCrop()">🔄 선택 초기화</button>
+            <button class="btn" onclick="restoreOriginal()">↩️ 원본으로</button>
+            <div class="crop-status" id="cropStatus">선택된 영역 없음</div>
+          </div>
+          
           <div style="margin-top: 15px; color: #666; font-size: 14px;">
             ☝️ 이 이미지를 우클릭하여 "이미지 복사"를 선택하세요
           </div>
@@ -372,6 +440,7 @@
         <div style="text-align: center; margin-top: 15px;">
           <button class="btn" onclick="clearCapture()">🗑️ 캡처 삭제</button>
           <button class="btn" onclick="startScreenCapture()">📸 다시 캡처</button>
+          <button class="btn" onclick="downloadImage()">💾 이미지 저장</button>
         </div>
       </div>
 
@@ -650,10 +719,17 @@
       // 이미지 설정
       capturedImage.src = imageDataUrl;
       capturedImage.alt = '캡처된 이미지';
+      originalImageData = imageDataUrl; // 원본 이미지 저장
       
       // 우클릭 방지 해제 (복사를 위해)
       capturedImage.oncontextmenu = function() {
         return true; // 우클릭 허용
+      };
+      
+      // 이미지 로드 완료 후 자르기 이벤트 설정
+      capturedImage.onload = function() {
+        setupCropEvents();
+        resetCrop();
       };
       
       // 캡처 섹션 표시
@@ -670,12 +746,182 @@
       
       capturedImage.src = '';
       captureSection.style.display = 'none';
+      originalImageData = null;
+      resetCrop();
       
       showAlert('캡처된 이미지가 삭제되었습니다.', 'success');
     }
 
     // 초기화
     dataInput.focus();
+
+    // 이미지 자르기 관련 변수
+    let isSelecting = false;
+    let cropStartX = 0;
+    let cropStartY = 0;
+    let cropEndX = 0;
+    let cropEndY = 0;
+    let originalImageData = null;
+
+    // 이미지 자르기 이벤트 설정
+    function setupCropEvents() {
+      const cropOverlay = document.getElementById('cropOverlay');
+      const cropSelection = document.getElementById('cropSelection');
+      const cropControls = document.getElementById('cropControls');
+      const cropStatus = document.getElementById('cropStatus');
+      
+      if (!cropOverlay) return;
+      
+      cropOverlay.addEventListener('mousedown', startCrop);
+      cropOverlay.addEventListener('mousemove', updateCrop);
+      cropOverlay.addEventListener('mouseup', endCrop);
+      cropOverlay.addEventListener('mouseleave', endCrop);
+      
+      function startCrop(e) {
+        isSelecting = true;
+        const rect = cropOverlay.getBoundingClientRect();
+        cropStartX = e.clientX - rect.left;
+        cropStartY = e.clientY - rect.top;
+        cropEndX = cropStartX;
+        cropEndY = cropStartY;
+        
+        cropSelection.style.display = 'block';
+        updateCropSelection();
+      }
+      
+      function updateCrop(e) {
+        if (!isSelecting) return;
+        
+        const rect = cropOverlay.getBoundingClientRect();
+        cropEndX = e.clientX - rect.left;
+        cropEndY = e.clientY - rect.top;
+        
+        updateCropSelection();
+      }
+      
+      function endCrop(e) {
+        if (!isSelecting) return;
+        isSelecting = false;
+        
+        const width = Math.abs(cropEndX - cropStartX);
+        const height = Math.abs(cropEndY - cropStartY);
+        
+        if (width > 10 && height > 10) {
+          cropControls.classList.add('active');
+          cropStatus.textContent = `선택된 영역: ${Math.round(width)} × ${Math.round(height)} px`;
+        } else {
+          resetCrop();
+        }
+      }
+      
+      function updateCropSelection() {
+        const left = Math.min(cropStartX, cropEndX);
+        const top = Math.min(cropStartY, cropEndY);
+        const width = Math.abs(cropEndX - cropStartX);
+        const height = Math.abs(cropEndY - cropStartY);
+        
+        cropSelection.style.left = left + 'px';
+        cropSelection.style.top = top + 'px';
+        cropSelection.style.width = width + 'px';
+        cropSelection.style.height = height + 'px';
+      }
+    }
+    
+    // 자르기 실행
+    function cropImage() {
+      const capturedImage = document.getElementById('capturedImage');
+      const cropSelection = document.getElementById('cropSelection');
+      
+      if (!capturedImage.src || !cropSelection.style.width) {
+        showAlert('자를 영역을 먼저 선택해주세요!', 'error');
+        return;
+      }
+      
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 이미지 실제 크기 계산
+        const img = new Image();
+        img.onload = function() {
+          const displayRect = capturedImage.getBoundingClientRect();
+          const scaleX = img.width / capturedImage.offsetWidth;
+          const scaleY = img.height / capturedImage.offsetHeight;
+          
+          const cropLeft = Math.min(cropStartX, cropEndX) * scaleX;
+          const cropTop = Math.min(cropStartY, cropEndY) * scaleY;
+          const cropWidth = Math.abs(cropEndX - cropStartX) * scaleX;
+          const cropHeight = Math.abs(cropEndY - cropStartY) * scaleY;
+          
+          canvas.width = cropWidth;
+          canvas.height = cropHeight;
+          
+          ctx.drawImage(img, cropLeft, cropTop, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+          
+          const croppedImageData = canvas.toDataURL('image/png', 1.0);
+          capturedImage.src = croppedImageData;
+          
+          resetCrop();
+          showAlert('🎉 이미지가 성공적으로 잘렸습니다!', 'success');
+        };
+        img.src = capturedImage.src;
+        
+      } catch (error) {
+        console.error('이미지 자르기 실패:', error);
+        showAlert('❌ 이미지 자르기 중 오류가 발생했습니다.', 'error');
+      }
+    }
+    
+    // 자르기 선택 초기화
+    function resetCrop() {
+      const cropSelection = document.getElementById('cropSelection');
+      const cropControls = document.getElementById('cropControls');
+      const cropStatus = document.getElementById('cropStatus');
+      
+      cropSelection.style.display = 'none';
+      cropControls.classList.remove('active');
+      cropStatus.textContent = '선택된 영역 없음';
+      
+      isSelecting = false;
+      cropStartX = cropStartY = cropEndX = cropEndY = 0;
+    }
+    
+    // 원본 이미지로 복원
+    function restoreOriginal() {
+      const capturedImage = document.getElementById('capturedImage');
+      
+      if (!originalImageData) {
+        showAlert('원본 이미지가 없습니다!', 'error');
+        return;
+      }
+      
+      capturedImage.src = originalImageData;
+      resetCrop();
+      showAlert('🔄 원본 이미지로 복원되었습니다!', 'success');
+    }
+
+    // 이미지 다운로드
+    function downloadImage() {
+      const capturedImage = document.getElementById('capturedImage');
+      
+      if (!capturedImage.src) {
+        showAlert('다운로드할 이미지가 없습니다!', 'error');
+        return;
+      }
+      
+      try {
+        const link = document.createElement('a');
+        link.download = `captured_image_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+        link.href = capturedImage.src;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showAlert('🎉 이미지가 다운로드되었습니다!', 'success');
+      } catch (error) {
+        showAlert('❌ 다운로드 기능이 제한되어 있습니다', 'error');
+      }
+    }
   </script>
 </body>
 </html>
